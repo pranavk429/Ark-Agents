@@ -2,6 +2,7 @@
 {% block body %}
 <h1>Decision timeline</h1>
 <p class="dim">Every tool call the kernel evaluated, newest first. Append-only.</p>
+<div class="tblwrap">
 <table class="tbl">
   <tr><th>time</th><th>job</th><th>tool</th><th>verdict</th><th>rule</th>
       <th>labels</th><th>ms</th></tr>
@@ -17,4 +18,5 @@
   </tr>
   {% endfor %}
 </table>
+</div>
 {% endblock %}

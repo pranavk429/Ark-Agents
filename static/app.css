@@ -1,25 +1,28 @@
 :root{--bg:#0d0f13;--panel:#14171d;--line:#242832;--ink:#e6e8ec;--dim:#8b90a0;
       --allow:#3fb950;--approve:#d29922;--deny:#f85149;--accent:#58a6ff;}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);
-     font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden;
+     font:15px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-size:20px;letter-spacing:.02em;margin:0 0 4px}
 .nav{display:flex;gap:20px;align-items:center;padding:12px 20px;
      border-bottom:1px solid var(--line);background:var(--panel)}
 .nav a{color:var(--dim);text-decoration:none}
 .nav a.on{color:var(--accent)}
 .brand{font-weight:700;letter-spacing:.12em;margin-right:16px}
-main{padding:20px;max-width:1100px;margin:0 auto}
+main{padding:20px;max-width:1200px;margin:0 auto}
 .chips{display:flex;gap:10px;margin:16px 0}
 button{background:var(--panel);color:var(--ink);border:1px solid var(--line);
        padding:8px 14px;cursor:pointer;font:inherit}
 button.danger{border-color:var(--deny);color:var(--deny)}
 input{background:var(--panel);border:1px solid var(--line);color:var(--ink);
-      padding:8px;width:420px;font:inherit}
-form{display:flex;gap:8px;margin-bottom:20px}
+      padding:8px;width:420px;max-width:100%;font:inherit}
+form{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .ev{border-left:3px solid var(--line);background:var(--panel);
     padding:10px 14px;margin-bottom:8px}
 .ev.allow{border-left-color:var(--allow)}
-.ev.deny{border-left-color:var(--deny);background:#1d1416}
+/* The deny row is the point of the whole screen — it must win the eye from the
+   back of a room: thicker rule, deeper bed, brighter verdict. */
+.ev.deny{border-left-color:var(--deny);border-left-width:5px;background:#24141a}
 .ev.need_approval{border-left-color:var(--approve)}
 .ev.supervisor{border-left-color:var(--accent)}
 .ev.done{border-left-color:var(--allow);color:var(--allow)}
@@ -31,13 +34,17 @@ form{display:flex;gap:8px;margin-bottom:20px}
 .ev.allow .verdict{color:var(--allow)}
 .ev.deny .verdict{color:var(--deny)}
 .ev.need_approval .verdict{color:var(--approve)}
-.ev-sub{color:var(--dim);font-size:12px;margin-left:24px;margin-top:3px}
+.ev.deny .verdict{font-weight:700}
+.ev-sub{color:var(--dim);font-size:13px;margin-left:24px;margin-top:3px;
+        overflow-wrap:anywhere}
 .ev-sub.arrow{color:var(--deny)}
 .ev-sub.rule{color:var(--dim);font-style:italic}
-.tbl{width:100%;border-collapse:collapse;font-size:12px}
+/* A wide audit table scrolls inside its own box; the page itself never does. */
+.tblwrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .tbl th{text-align:left;color:var(--dim);font-weight:400;text-transform:uppercase;
         font-size:10px;letter-spacing:.12em;padding:8px;border-bottom:1px solid var(--line)}
-.tbl td{padding:8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .tbl tr.deny td{background:#1d1416}
 .tbl tr.deny .verdict{color:var(--deny)}
 .tbl tr.allow .verdict{color:var(--allow)}
