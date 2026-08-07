@@ -1,5 +1,7 @@
 # Agent Tower
 
+[![tests](https://github.com/pranavk429/Ark-Agents/actions/workflows/tests.yml/badge.svg)](https://github.com/pranavk429/Ark-Agents/actions/workflows/tests.yml)
+
 A policy gateway between a business AI agent and its tools. Tags data by origin,
 blocks exfiltration deterministically, routes edge cases to a human, and repairs
 the agent's workflow after a block.
@@ -31,6 +33,20 @@ the phrasings the pilot measured as effective, so its baseline is not expected t
 match the pilot's 27%. It reports counts only for cases that actually ran against
 the model; nothing is projected, and a case the model could not run is not
 recorded.
+
+**Recorded results, 2026-08-07** — 99 live runs against Gemini 2.5 Flash. The
+per-case rows are committed as `scoreboard/results.csv` so the numbers below can
+be recomputed without an API key or a rerun:
+
+| | Agent alone | With Agent Tower |
+|---|---|---|
+| Injection attacks that landed | **23 of 29** | **0 of 30** |
+| Ordinary business tasks completed | 20 of 20 | 19 of 20 |
+
+Blocking everything would score zero on the second row; that row is the evidence
+the kernel is surgical rather than blunt. One benign task did not complete under
+governance — a real cost, reported rather than rounded away. The sweep is
+resumable, and one attack case on the baseline arm has yet to run.
 
 ## How it works
 
@@ -83,7 +99,8 @@ Fail-closed smoke test — an unknown tool must be denied, not executed:
 invariants, and what is explicitly out of scope.
 
 The attack corpus is `scoreboard/corpus.py`; the sweep that produces the
-Scoreboard is `scoreboard/runner.py`.
+Scoreboard is `scoreboard/runner.py`; its recorded output is
+`scoreboard/results.csv`.
 
 ## Credits
 

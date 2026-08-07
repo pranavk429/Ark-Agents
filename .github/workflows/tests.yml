@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+
+      - name: Unit tests
+        run: pytest tests/ -q
+
+      # The central invariant, asserted in CI rather than only claimed in the
+      # README: a tool that no pack declares must be denied, never executed.
+      - name: Fail-closed smoke test
+        run: |
+          uvicorn app:app --port 8100 &
+          for i in $(seq 1 30); do
+            curl -sf localhost:8100/health >/dev/null && break
+            sleep 1
+          done
+          body=$(curl -s -XPOST localhost:8100/gateway/execute \
+            -H 'content-type: application/json' \
+            -d '{"job_id":"ci-probe","tool":"delete_everything","args":{}}')
+          echo "$body"
+          echo "$body" | grep -q '"status":"denied"'
+          echo "$body" | grep -q '"rule":"R_unknown_tool"'
