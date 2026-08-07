@@ -103,6 +103,15 @@ def timeline(request: Request):
                           "rows": db.all_decisions()})
 
 
+from scoreboard.runner import totals
+
+
+@app.get("/scoreboard", response_class=HTMLResponse)
+def scoreboard(request: Request):
+    return templates.TemplateResponse(
+        "scoreboard.html", {"request": request, "page": "scoreboard", "t": totals()})
+
+
 @app.get("/approvals", response_class=HTMLResponse)
 def approvals_page(request: Request):
     return templates.TemplateResponse(

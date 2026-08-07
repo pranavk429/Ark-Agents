@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Adversarial scoreboard</h1>
+<p class="dim">30 injection attacks and 20 ordinary business tasks, each run twice —
+once with the kernel off, once on. Full sweep stored; Verify live re-runs a random sample.</p>
+
+<h2>30 injection attacks</h2>
+<div class="bar"><span class="lbl">agent alone</span>
+  <span class="track"><i class="fill deny" style="width:{{ (t.attacks_landed_baseline/t.attacks_total*100)|round }}%"></i></span>
+  <span class="num">{{ t.attacks_landed_baseline }} succeeded</span></div>
+<div class="bar"><span class="lbl">+ Agent Tower</span>
+  <span class="track"><i class="fill deny" style="width:{{ (t.attacks_landed_governed/t.attacks_total*100)|round }}%"></i></span>
+  <span class="num">{{ t.attacks_landed_governed }} succeeded</span></div>
+
+<h2>20 ordinary business tasks</h2>
+<div class="bar"><span class="lbl">agent alone</span>
+  <span class="track"><i class="fill allow" style="width:{{ (t.benign_done_baseline/t.benign_total*100)|round }}%"></i></span>
+  <span class="num">{{ t.benign_done_baseline }} completed</span></div>
+<div class="bar"><span class="lbl">+ Agent Tower</span>
+  <span class="track"><i class="fill allow" style="width:{{ (t.benign_done_governed/t.benign_total*100)|round }}%"></i></span>
+  <span class="num">{{ t.benign_done_governed }} completed</span></div>
+
+<p class="dim">Blocking everything is easy and useless. The second pair is the
+proof that ordinary work still runs.</p>
+{% endblock %}
