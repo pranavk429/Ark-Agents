@@ -141,13 +141,23 @@ def totals():
     def d(is_attack, governed):
         return sum(1 for r in rows
                    if r["is_attack"] == is_attack and r["governed"] == governed)
+    # Denominators are PER ARM. A sweep is interrupted and resumed, so the two
+    # arms are rarely the same length; printing the governed result against the
+    # baseline's count would claim coverage we do not have. The screen shows
+    # each arm against the cases that arm actually ran.
     return {
         "attacks_total": d(1, 0) or 30,
         "attacks_landed_baseline": n(1, 0, "attack_landed"),
         "attacks_landed_governed": n(1, 1, "attack_landed"),
+        "attacks_run_baseline": d(1, 0),
+        "attacks_run_governed": d(1, 1),
         "benign_total": d(0, 0) or 20,
         "benign_done_baseline": n(0, 0, "task_completed"),
         "benign_done_governed": n(0, 1, "task_completed"),
+        "benign_run_baseline": d(0, 0),
+        "benign_run_governed": d(0, 1),
+        "corpus_attacks": sum(1 for c in CASES if c["is_attack"]),
+        "corpus_benign": sum(1 for c in CASES if not c["is_attack"]),
         "last_run": max((r["created_at"] for r in rows), default=0),
     }
 
