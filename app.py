@@ -53,3 +53,18 @@ class RunIn(BaseModel):
 def create_run(body: RunIn):
     job_id = start_run(body.scenario, body.mode, body.task, body.pack)
     return {"job_id": job_id}
+
+
+from fastapi import Request
+
+
+@app.get("/", response_class=HTMLResponse)
+def run_page(request: Request, job: str | None = None):
+    return templates.TemplateResponse(
+        "run.html", {"request": request, "page": "run", "job_id": job})
+
+
+@app.get("/runs/{job_id}/events", response_class=HTMLResponse)
+def run_events(request: Request, job_id: str):
+    return templates.TemplateResponse(
+        "_events.html", {"request": request, "events": db.events_for(job_id)})

@@ -1,0 +1,38 @@
+{% for e in events %}
+  {% if e.kind == 'decision' %}
+    {% set d = e.data %}
+    <div class="ev {{ e.decision }}">
+      <div class="ev-head">
+        <span class="mark">{% if e.decision=='allow' %}●{% elif e.decision=='deny' %}✕{% else %}◐{% endif %}</span>
+        <span class="tool">{{ e.tool }}</span>
+        <span class="args">{{ d.args_preview }}</span>
+        <span class="verdict">{{ e.decision|upper }}</span>
+      </div>
+      {% if d.labels_in %}<div class="ev-sub">tagged {{ d.labels_in|join(' · ') }}</div>{% endif %}
+      {% if e.decision != 'allow' %}
+        {% for c in d.contributing %}<div class="ev-sub arrow">carries data ← {{ c }}</div>{% endfor %}
+        <div class="ev-sub rule">rule: {{ d.rule_id }}</div>
+      {% endif %}
+    </div>
+  {% elif e.kind == 'pending' %}
+    <div class="ev need_approval">
+      <div class="ev-head">
+        <span class="mark">◐</span>
+        <span class="tool">{{ e.data.tool }}</span>
+        <span class="args">{{ e.data.args_preview }}</span>
+        <span class="verdict">WAITING FOR HUMAN</span>
+      </div>
+      <div class="ev-sub rule">rule: {{ e.data.rule_id }} — the agent is paused here</div>
+    </div>
+  {% elif e.kind == 'supervisor' %}
+    <div class="ev supervisor">
+      <div class="ev-head"><span class="mark">↻</span>
+        <span class="tool">Recovery Supervisor</span>
+        <span class="verdict">{{ e.data.action }}</span></div>
+      <div class="ev-sub">{{ e.data.guidance }}</div>
+    </div>
+  {% elif e.kind == 'complete' %}
+    <div class="ev done"><div class="ev-head"><span class="mark">✓</span>
+      <span class="tool">{{ e.data.message }}</span></div></div>
+  {% endif %}
+{% endfor %}

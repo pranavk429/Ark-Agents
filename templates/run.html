@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Run a job</h1>
+<div class="chips">
+  <button onclick="go('clean')">Normal ticket</button>
+  <button onclick="go('injected')" class="danger">Poisoned ticket</button>
+  <button onclick="go('bulk_export')">Manager bulk export</button>
+</div>
+<form onsubmit="event.preventDefault();goTask(this.task.value)">
+  <input name="task" placeholder="or type your own task / attack…" autocomplete="off">
+  <button>Run live</button>
+</form>
+<div id="events" {% if job_id %}hx-get="/runs/{{ job_id }}/events"
+     hx-trigger="load, every 600ms" hx-swap="innerHTML"{% endif %}></div>
+<script>
+async function go(scenario){
+  const r = await fetch('/runs',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({scenario,mode:'scripted'})});
+  const {job_id} = await r.json(); location.href = '/?job=' + job_id;
+}
+async function goTask(task){
+  const r = await fetch('/runs',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({task,mode:'live'})});
+  const {job_id} = await r.json(); location.href = '/?job=' + job_id;
+}
+</script>
+{% endblock %}
