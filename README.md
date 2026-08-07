@@ -72,6 +72,161 @@ Recovery Supervisor — which sees only enumerated values our own code chose, ne
 attacker-authored text — returns one of three instructions so the legitimate task
 still finishes.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    AG["<b>AI Agent</b><br/>agent/live.py, agent/worker.py<br/><i>holds no reference to any tool</i>"]
+
+    GW["<b>THE GATEWAY</b><br/>kernel/gateway.py, POST /gateway/execute<br/><i>every tool call passes through here</i>"]
+
+    subgraph K [" Kernel — deterministic, no model in the path "]
+        direction LR
+        LAB["<b>Handle store</b><br/>kernel/labels.py<br/>source, trust,<br/>sensitivity, subject"]
+        PACK["<b>Tool pack</b><br/>packs/*.yaml<br/>policy as data,<br/>hot-reloaded"]
+        POL["<b>Gate rule</b><br/>kernel/policy.py<br/><i>pure: no I/O,<br/>no clock, no model</i>"]
+    end
+
+    TOOLS["<b>Tools</b><br/>kernel/tools.py<br/><i>the only side-effecting code</i>"]
+    DB[("<b>Append-only record</b><br/>db.py")]
+    HUMAN(["<b>Human approver</b>"])
+    SUP["<b>Recovery Supervisor</b><br/>agent/supervisor.py<br/><i>never sees attacker text</i>"]
+
+    AG -->|"tool call"| GW
+    GW --> POL
+    LAB --> POL
+    PACK --> POL
+    POL -->|"verdict"| GW
+    GW -->|"recorded before<br/>anything runs"| DB
+    GW ==>|"ALLOW only"| TOOLS
+    TOOLS -->|"result becomes<br/>a labelled handle"| LAB
+    GW -.->|"NEED APPROVAL<br/>blocks up to 120s"| HUMAN
+    HUMAN -.->|"timeout = deny"| GW
+    GW -.->|"DENY"| SUP
+    SUP -.->|"guidance"| AG
+    GW -->|"handle id + preview,<br/>never raw data"| AG
+
+    classDef gate fill:#1E3A5F,stroke:#60A5FA,stroke-width:3px,color:#EFF6FF
+    class GW gate
+```
+
+**The dependency direction is load-bearing.** `policy.py` imports nothing that
+touches the database, the network or the clock, which is what makes the gate rule
+unit-testable and impossible to influence at runtime. `gateway.py` is the only
+module that calls `tools.py`. The agent reaches tools through the gateway or not
+at all.
+
+### The gate rule
+
+First match wins, and **every path that is not explicitly allowed ends in DENY** —
+uncertainty never produces execution.
+
+```mermaid
+flowchart TD
+    START(["Tool call arrives at the gateway"]) --> Q0{"Declared in<br/>the tool pack?"}
+    Q0 -->|no| DENY0["<b>DENY</b><br/>R_unknown_tool"]
+    Q0 -->|yes| Q1{"Does this tool send<br/>anything outside?"}
+    Q1 -->|no| ALLOW1["<b>ALLOW</b><br/>R1_not_egress"]
+    Q1 -->|yes| QV{"Private data, trusted job,<br/>and more records than<br/>the pack allows at once?"}
+    QV -->|yes| HOLD0["<b>NEED APPROVAL</b><br/>R0_volume"]
+    QV -->|no| Q2{"Any private data at all?<br/>payload handles PLUS<br/>what the tool itself reaches"}
+    Q2 -->|no| ALLOW2["<b>ALLOW</b><br/>R2_no_private"]
+    Q2 -->|yes| Q3{"Every destination<br/>inside the company?"}
+    Q3 -->|"yes, job is clean"| ALLOW3["<b>ALLOW</b><br/>R3_internal_destination"]
+    Q3 -->|"yes, but job read<br/>untrusted content"| HOLD3["<b>NEED APPROVAL</b><br/>R3_internal_but_untrusted_job"]
+    Q3 -->|no| Q4{"One person's data, going to<br/>that person's own<br/>registered address?"}
+    Q4 -->|yes| ALLOW4["<b>ALLOW</b><br/>R4_subject_binding"]
+    Q4 -->|no| Q5{"Has this job read<br/>untrusted content?"}
+    Q5 -->|yes| DENY5["<b>DENY</b><br/>R5_untrusted_context"]
+    Q5 -->|no| HOLD6["<b>NEED APPROVAL</b><br/>R6_trusted_external"]
+
+    classDef allow fill:#065F46,stroke:#34D399,stroke-width:2px,color:#ECFDF5
+    classDef deny fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#FEF2F2
+    classDef hold fill:#78350F,stroke:#FBBF24,stroke-width:2px,color:#FFFBEB
+    class ALLOW1,ALLOW2,ALLOW3,ALLOW4 allow
+    class DENY0,DENY5 deny
+    class HOLD0,HOLD3,HOLD6 hold
+```
+
+Two details in that chart carry most of the weight. **"What the tool itself
+reaches"** is why an attack that calls `export_records` directly, with nothing in
+its payload, is still caught — a payload-only guardrail would wave it through.
+And **trust is job-scoped**: reading any untrusted value flips the entire job,
+because instruction-shaped influence cannot be traced value by value. Sensitivity
+stays value-scoped, which is what keeps a denial surgical instead of fatal.
+
+### The attack, step by step
+
+The measured attack, as it actually runs. Steps 1 and 2 are ordinary work the
+agent is supposed to do; the trust flip at step 1 is what makes step 3 impossible.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant AG as Agent
+    participant GW as Gateway
+    participant PL as Gate rule
+    participant ST as Handle store
+    participant TL as Tools
+    participant SU as Supervisor
+
+    AG->>GW: read_ticket(4478)
+    GW->>PL: evaluate
+    PL-->>GW: ALLOW — not an egress tool
+    GW->>TL: run
+    TL-->>ST: ticket text, trust=untrusted
+    Note over ST: h_0001 lands<br/>THE JOB IS NOW UNTRUSTED
+    GW-->>AG: h_0001 + preview (never the raw value)
+
+    AG->>GW: lookup_customer(8823)
+    GW->>PL: evaluate
+    PL-->>GW: ALLOW — not an egress tool
+    GW->>TL: run
+    TL-->>ST: account record, sensitivity=private, subject=customer:8823
+    GW-->>AG: h_0002 + preview
+
+    Note over AG: the ticket told the agent to<br/>export the customer list
+    AG->>GW: export_records(scope=customers,<br/>destination=attacker address)
+    GW->>PL: evaluate
+    PL-->>GW: DENY — R5_untrusted_context
+    Note over TL: the tool is never called
+    GW->>SU: denied
+    SU-->>AG: "that path is blocked — finish the customer's actual request"
+    AG->>GW: send_email(legitimate reply)
+    GW-->>AG: ALLOW — nothing private in the payload
+```
+
+The customer still gets their answer. The export never happens. Nothing the
+attacker wrote was ever an input to the decision.
+
+### Module map
+
+| Path | Responsibility |
+|---|---|
+| `kernel/policy.py` | The gate rule. Pure function, no I/O. The heart of the product |
+| `kernel/gateway.py` | The single entry point to every tool. Fail-closed. Records before executing |
+| `kernel/labels.py` | Handles and their four labels; resolves which handles flowed into a payload |
+| `kernel/packs.py` | Loads tool packs from YAML, reloading on file change rather than caching |
+| `kernel/tools.py` | Mock tool implementations. Reachable only from the gateway |
+| `agent/live.py` | Live agent loop against Gemini 2.5 Flash, with scripted fallback |
+| `agent/worker.py` | Scripted agent loop, runs in a thread |
+| `agent/supervisor.py` | Recovery guidance after a denial, from a canned table |
+| `packs/support.yaml` | The policy, as data. The kernel never learns what a "ticket" is |
+| `app.py`, `db.py` | FastAPI routes and the append-only SQLite record |
+| `scoreboard/` | The 50-case corpus and the baseline-vs-governed sweep |
+
+### Invariants
+
+1. **Fail closed.** Any error, timeout, unknown tool or unmatched request denies.
+2. **The agent holds no tool reference.** Gateway or nothing.
+3. **Enforcement is deterministic code.** No model call can turn a DENY into an ALLOW.
+4. **The Recovery Supervisor never sees attacker-authored text** — only enumerated
+   values the kernel chose. Feeding it a raw error string would rebuild the
+   vulnerability inside the defence.
+5. **Every decision is recorded before the tool runs.**
+6. **Approval is an enforced hold**, not advice — the call blocks, and a timeout
+   is a denial.
+
 ## Run
 
     cp .env.example .env    # add your GEMINI_API_KEY
