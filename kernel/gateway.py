@@ -31,6 +31,46 @@ def _wait_for_approval(approval_id):
     return "expired"          # timeout is a denial, never a silent allow
 
 
+def _producing_tool(pack, source):
+    """Which tool in this pack produces data carrying that source label."""
+    for t in pack["tools"]:
+        if (t.get("produces") or {}).get("source") == source:
+            return t["name"]
+    return source
+
+
+def _provenance(job_id, pack, tool, decision, context_trust):
+    """Attribution lines for the UI: which earlier step caused each label.
+
+    These are the arrows in spec section 11 — the thing a payload-only
+    guardrail cannot draw. Every string here is composed from enumerated
+    kernel-side values (tool names, source labels, handle ids). No tool
+    output and no ticket text ever reaches this function.
+    """
+    spec = pack["tool_index"].get(tool)
+    if spec is None:
+        return []
+    lines = []
+
+    payload_private = [h for h in (STORE.get(job_id, i) for i in decision.contributing)
+                       if h is not None and h.sensitivity == "private"]
+    for h in payload_private:
+        lines.append(f"carries PRIVATE ← from {_producing_tool(pack, h.source)} ({h.id})")
+    # The measured attack calls export_records with nothing in the payload.
+    # The label comes from the tool's own declaration, so say that plainly.
+    if not payload_private and spec.get("accesses") == "private":
+        lines.append(f"carries PRIVATE ← {tool} reaches private data directly")
+
+    if context_trust == "untrusted":
+        first = next((h for h in STORE.all(job_id) if h.trust == "untrusted"), None)
+        if first:
+            lines.append(f"job context UNTRUSTED ← from "
+                         f"{_producing_tool(pack, first.source)} ({first.id})")
+        else:
+            lines.append("job context UNTRUSTED ← an earlier step read untrusted content")
+    return lines
+
+
 def execute(job_id: str, tool: str, args: dict, step: int) -> dict:
     started = time.time()
     job = db.get_job(job_id)
@@ -47,6 +87,10 @@ def execute(job_id: str, tool: str, args: dict, step: int) -> dict:
         d = Decision("deny", "R_kernel_error", [f"kernel_error:{type(exc).__name__}"],
                      [], [], ["R_kernel_error"])
 
+    # Computed once, from the labels as they stood at decision time. Approval
+    # can change the verdict but never changes where the data came from.
+    prov = _provenance(job_id, pack, tool, d, context_trust)
+
     # Approval is a hold, not advice: the call does not proceed until a human says so.
     if d.verdict == "need_approval":
         with db.connect() as c:
@@ -61,7 +105,8 @@ def execute(job_id: str, tool: str, args: dict, step: int) -> dict:
         # as long as the approval sits there.
         db.append_event(job_id, step, "pending",
                         {"tool": tool, "args_preview": str(args)[:300],
-                         "rule_id": d.rule_id, "reasons": d.reasons},
+                         "rule_id": d.rule_id, "reasons": d.reasons,
+                         "provenance": prov},
                         tool=tool, decision="need_approval")
         outcome = _wait_for_approval(approval_id)
         if outcome != "approved":
@@ -75,6 +120,7 @@ def execute(job_id: str, tool: str, args: dict, step: int) -> dict:
         "tool": tool, "args_preview": str(args)[:300], "rule_id": d.rule_id,
         "reasons": d.reasons, "labels_in": d.labels_in,
         "contributing": d.contributing, "matched_rules": d.matched_rules,
+        "provenance": prov,
         "duration_ms": round((time.time() - started) * 1000, 1),
     }
     db.append_event(job_id, step, "decision", record, tool=tool, decision=d.verdict)

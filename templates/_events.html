@@ -10,7 +10,10 @@
       </div>
       {% if d.labels_in %}<div class="ev-sub">tagged {{ d.labels_in|join(' · ') }}</div>{% endif %}
       {% if e.decision != 'allow' %}
-        {% for c in d.contributing %}<div class="ev-sub arrow">carries data ← {{ c }}</div>{% endfor %}
+        {% for p in d.provenance or [] %}<div class="ev-sub arrow">{{ p }}</div>{% endfor %}
+        {% if not d.provenance %}
+          {% for c in d.contributing %}<div class="ev-sub arrow">carries data ← {{ c }}</div>{% endfor %}
+        {% endif %}
         <div class="ev-sub rule">rule: {{ d.rule_id }}</div>
       {% endif %}
     </div>
@@ -22,6 +25,7 @@
         <span class="args">{{ e.data.args_preview }}</span>
         <span class="verdict">WAITING FOR HUMAN</span>
       </div>
+      {% for p in e.data.provenance or [] %}<div class="ev-sub arrow">{{ p }}</div>{% endfor %}
       <div class="ev-sub rule">rule: {{ e.data.rule_id }} — the agent is paused here</div>
     </div>
   {% elif e.kind == 'supervisor' %}
