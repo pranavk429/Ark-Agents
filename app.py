@@ -15,6 +15,25 @@ templates = Jinja2Templates(directory=BASE / "templates")
 templates.env.filters["clock"] = lambda ts: _time.strftime("%H:%M:%S",
                                                            _time.localtime(ts))
 
+# Spec section 11: the approvals screen owes the human a plain-English reason.
+# Every key here is a reason token this kernel emits itself (kernel/policy.py) —
+# no tool output and no ticket text is ever looked up or rendered through this.
+RISK_ENGLISH = {
+    "private_data": "the payload carries private customer data",
+    "external_destination": "the destination is outside the company",
+    "internal_destination": "the destination is inside the company",
+    "untrusted_context": "this job has already read untrusted outside content",
+    "volume_exceeds_threshold": "this call moves more records than the pack allows at once",
+}
+
+
+def _plain_risk(risk: str) -> str:
+    parts = [RISK_ENGLISH.get(t.strip(), t.strip()) for t in (risk or "").split(",")]
+    return "; ".join(p for p in parts if p) or "held for human review"
+
+
+templates.env.filters["plain_risk"] = _plain_risk
+
 import db
 
 
@@ -80,3 +99,32 @@ def timeline(request: Request):
     return templates.TemplateResponse(
         "timeline.html", {"request": request, "page": "timeline",
                           "rows": db.all_decisions()})
+
+
+@app.get("/approvals", response_class=HTMLResponse)
+def approvals_page(request: Request):
+    return templates.TemplateResponse(
+        "approvals.html", {"request": request, "page": "approvals"})
+
+
+@app.get("/approvals/list", response_class=HTMLResponse)
+def approvals_list(request: Request):
+    with db.connect() as c:
+        rows = c.execute(
+            "SELECT * FROM approvals WHERE status='pending' ORDER BY id").fetchall()
+    return templates.TemplateResponse(
+        "_approvals.html", {"request": request, "rows": rows})
+
+
+@app.post("/approvals/{aid}/decide")
+def decide(aid: int, d: str = "rejected"):
+    # Fail closed: only the exact string 'approved' releases the hold. Anything
+    # else — a typo, a stale button, a malformed request — is a denial.
+    status = "approved" if d == "approved" else "rejected"
+    # 'AND status=pending' matters: an expired hold's thread is already dead, so
+    # approving it would report a release that can never happen.
+    with db.connect() as c:
+        cur = c.execute(
+            "UPDATE approvals SET status=?, decided_at=? WHERE id=? AND status='pending'",
+            (status, _time.time(), aid))
+    return {"ok": cur.rowcount == 1, "status": status}

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Approval queue</h1>
+<p class="dim">The agent is paused on these. It cannot proceed until a human decides.</p>
+<div hx-get="/approvals/list" hx-trigger="load, every 1s" hx-swap="innerHTML"></div>
+{% endblock %}
