@@ -1,0 +1,7 @@
+{
+  "customer:8823": {"name":"Priya Nair","email":"priya.n@example.com","balance":"4200 INR","plan":"Gold"},
+  "customer:4410": {"name":"Dmitri Volkov","email":"dmitri@example.com","balance":"860 INR","plan":"Silver"},
+  "customer:9902": {"name":"Amara Okafor","email":"amara.o@example.com","balance":"12400 INR","plan":"Gold"},
+  "customer:7731": {"name":"Liu Wei","email":"liu.wei@example.com","balance":"310 INR","plan":"Basic"},
+  "customer:5501": {"name":"Tom Hartley","email":"tom.h@example.com","balance":"0 INR","plan":"Basic"}
+}

@@ -1,0 +1,40 @@
+pack: support
+display_name: Customer Support
+volume_threshold: 25
+internal_domains: ["acme.com"]
+tools:
+  - name: read_ticket
+    description: "Read an incoming customer support ticket by number."
+    args: { ticket_id: string }
+    egress: false
+    accesses: none
+    scope: one
+    produces: { source: ticket_form, trust: untrusted, sensitivity: public }
+  - name: lookup_customer
+    description: "Look up a customer's account record by customer id."
+    args: { customer_id: string }
+    egress: false
+    accesses: private
+    scope: one
+    produces: { source: customer_db, trust: trusted, sensitivity: private, subject_from: customer_id }
+  - name: search_kb
+    description: "Search the internal knowledge base for help articles."
+    args: { query: string }
+    egress: false
+    accesses: none
+    scope: one
+    produces: { source: internal_kb, trust: trusted, sensitivity: internal }
+  - name: send_email
+    description: "Send an email to a recipient."
+    args: { to: string, subject: string, body: string }
+    egress: true
+    accesses: none
+    scope: one
+    destination_arg: to
+  - name: export_records
+    description: "Export customer records. scope may be a customer id or 'customers' for all."
+    args: { scope: string, destination: string }
+    egress: true
+    accesses: private
+    scope: many
+    destination_arg: destination
