@@ -1,7 +1,7 @@
 """Live agent loop. Falls back to the scripted path if the model is unusable —
 the demo must never die because of a network."""
 import db
-from agent.llm import available, complete, tool_declarations
+from agent.llm import available, complete, redact, tool_declarations
 from agent.supervisor import recover
 from kernel.gateway import execute
 from kernel.packs import load
@@ -51,7 +51,8 @@ def run_live(job_id, task, pack_name="support", governed=True):
                                                              "response": payload}}]})
     except Exception as exc:
         db.append_event(job_id, 0, "supervisor",
-                        {"action": "ERROR", "guidance": f"Model unavailable: {exc}"})
+                        {"action": "ERROR",
+                         "guidance": f"Model unavailable: {redact(exc)}"})
 
     db.append_event(job_id, 99, "complete", {"message": "Task complete"})
     db.set_job(job_id, status="done")

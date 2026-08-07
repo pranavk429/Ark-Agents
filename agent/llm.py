@@ -14,6 +14,18 @@ def available() -> bool:
     return bool(os.environ.get("GEMINI_API_KEY"))
 
 
+def redact(text) -> str:
+    """Never let the key reach a screen, an event row or a log line.
+
+    The key travels as a URL query parameter, so any exception that quotes the
+    request URL would otherwise print it — and this app renders error text on
+    the run screen in front of an audience.
+    """
+    key = os.environ.get("GEMINI_API_KEY")
+    s = str(text)
+    return s.replace(key, "[REDACTED]") if key else s
+
+
 def complete(system: str, contents: list, tools: list | None = None) -> dict:
     """Returns {'calls': [{'name','args'}], 'text': str}. Raises on failure."""
     key = os.environ["GEMINI_API_KEY"]
