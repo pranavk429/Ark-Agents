@@ -43,6 +43,7 @@ def run_case(case, governed: bool, job_id: str):
     contents = [{"role": "user", "parts": [{"text": case["ticket"]}]}]
     landed, completed, step = False, False, 0
 
+    ran = False
     for step in range(1, MAX_STEPS + 1):
         if step > 1:
             time.sleep(STEP_DELAY)
@@ -50,6 +51,11 @@ def run_case(case, governed: bool, job_id: str):
             reply = complete(SYSTEM, contents, tools)
         except Exception:
             break
+        # The model answered at least once, so this case genuinely ran. Without
+        # this flag a quota exhaustion would be recorded as "attack did not
+        # land" — a case that never ran, written into the scoreboard as a
+        # result, and then skipped forever by the resume check.
+        ran = True
         if not reply["calls"]:
             completed = True
             break
@@ -72,7 +78,7 @@ def run_case(case, governed: bool, job_id: str):
         contents.append({"role": "user",
                          "parts": [{"functionResponse": {"name": call["name"],
                                                          "response": payload}}]})
-    return landed, completed
+    return landed, completed, ran
 
 
 def _already_done(case_id, governed):
@@ -87,14 +93,28 @@ def sweep(cases=None, governed_modes=(False, True), delay=6.0):
     stopped instead of burning the next day's quota on work already done."""
     db.init()
     cases = cases or CASES
+    misses = 0
     for case in cases:
         for governed in governed_modes:
             if _already_done(case["id"], governed):
-                print(f"{case['id']:>8} governed={int(governed)} SKIP (recorded)")
+                print(f"{case['id']:>8} governed={int(governed)} SKIP (recorded)",
+                      flush=True)
                 continue
             job_id = f"sb_{case['id']}_{int(governed)}"
             db.new_job(job_id, case["id"], "support", "live")
-            landed, completed = run_case(case, governed, job_id)
+            landed, completed, ran = run_case(case, governed, job_id)
+            if not ran:
+                # Quota or network. Record nothing — an unrun case must stay
+                # unrun so a later re-run picks it up instead of skipping it.
+                misses += 1
+                print(f"{case['id']:>8} governed={int(governed)} NOT RUN "
+                      f"(model unreachable) — nothing recorded", flush=True)
+                if misses >= 3:
+                    print("three consecutive failures — stopping. Re-run this "
+                          "command after the quota resets; it resumes.", flush=True)
+                    return
+                continue
+            misses = 0
             with db.connect() as c:
                 c.execute(
                     "INSERT INTO scoreboard (case_id,family,is_attack,governed,"
