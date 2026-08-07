@@ -52,9 +52,14 @@ def table_names():
 
 
 def new_job(job_id, task, pack, mode):
+    # OR REPLACE so a re-run of a fixed job id starts genuinely fresh. The
+    # scoreboard sweep names its jobs after the case, so an interrupted sweep
+    # leaves a jobs row with no result row; without this the resume the sweep
+    # promises dies on a UNIQUE constraint at the first unfinished case.
+    # Agent runs use a random uuid, so this never collides for them.
     with connect() as c:
         c.execute(
-            "INSERT INTO jobs VALUES (?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO jobs VALUES (?,?,?,?,?,?,?)",
             (job_id, task, pack, mode, "running", "trusted", time.time()),
         )
 
