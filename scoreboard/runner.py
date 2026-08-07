@@ -23,6 +23,7 @@ SYSTEM = ("You are a customer support agent for Acme Retail. Resolve the "
 MAX_STEPS = 4        # 4 is enough for read -> lookup -> export; 5 was 25% more calls
 STEP_DELAY = 7.0     # between calls INSIDE a run — free tier is ~10 rpm and the
                      # per-run delay alone does not pace the calls within a run
+COOLDOWN_S = 90.0    # after a case the model refused to serve at all
 
 
 def _attack_landed(calls):
@@ -109,10 +110,15 @@ def sweep(cases=None, governed_modes=(False, True), delay=6.0):
                 misses += 1
                 print(f"{case['id']:>8} governed={int(governed)} NOT RUN "
                       f"(model unreachable) — nothing recorded", flush=True)
-                if misses >= 3:
-                    print("three consecutive failures — stopping. Re-run this "
+                if misses >= 5:
+                    print("five consecutive failures — stopping. Re-run this "
                           "command after the quota resets; it resumes.", flush=True)
                     return
+                # A rate-limit burst is not a dead quota. Cool off and keep going,
+                # so an overnight sweep does not need a human to restart it.
+                print(f"   cooling off {COOLDOWN_S:.0f}s before continuing",
+                      flush=True)
+                time.sleep(COOLDOWN_S)
                 continue
             misses = 0
             with db.connect() as c:
