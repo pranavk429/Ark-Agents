@@ -1,66 +1,398 @@
-:root{--bg:#0d0f13;--panel:#14171d;--line:#242832;--ink:#e6e8ec;--dim:#8b90a0;
-      --allow:#3fb950;--approve:#d29922;--deny:#f85149;--accent:#58a6ff;}
+/* ═══════════════════════════════════════════════════════════════════════════
+   Agent Tower — Soft Monochrome Dashboard
+
+   Hierarchy comes from tone and blur, never from lines. There is exactly one
+   rule in this file that draws a hairline, and it is structural (the nav tree
+   connector); everything else separates planes by stacking greys and a wide,
+   weak shadow. Colour is never decoration — a coloured pixel here is always a
+   claim about a value. Our claims are the four verdicts, plus the trust state.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  color-scheme:light;
+
+  /* ── Neutrals. Warm-to-dead neutral; no cool cast. Any new grey must be
+     added HERE, never inlined, or eight near-identical greys become mud.
+     Elevation runs LIGHTER in both themes: page → shell → card → raised. ── */
+  --surface-page:#DEDEDE;
+  --surface-shell:#EFEFEE;
+  --surface-card:#FAFAFA;
+  --surface-raised:#FFFFFF;
+  --surface-hover:#FFFFFF;
+  --fill-subtle:#EAEAEA;
+  --text-primary:#2C2C2C;     /* never pure black */
+  --text-secondary:#8C8C8C;
+  --text-tertiary:#B4B4B4;
+
+  /* ── Semantic accents. Each maps to a verdict the kernel actually emits.
+     TINTED PLANES and the ink that sits on them — both flip with the theme. ── */
+  --positive:#5FBF8F;         /* allow / task completed */
+  --positive-bg:#E4F5EB;
+  --positive-ink:#1E5B40;
+  --negative:#F08A76;         /* deny / attack landed */
+  --negative-bg:#FDEDE9;
+  --negative-ink:#8E3B26;
+  --attention-bg:#FEF0E4;     /* needs a human */
+  --attention-ink:#7A4114;
+
+  /* SOLID BADGE FILLS stay pastel in BOTH themes, so their ink stays dark in
+     both. Splitting these from the plane inks above is the whole reason a
+     dark-mode badge doesn't end up rendering dark ink on a dark fill —
+     and it keeps "badge ink is the dark end of its own hue" true either way. */
+  --positive-badge:#B6E7C9;
+  --attention-badge:#FBB183;
+  --on-badge-positive:#1E5B40;
+  --on-badge-attention:#7A4114;
+  --on-badge-negative:#4E1E11;
+
+  /* The one material object. Stops are tokens so the logo stays metal in
+     both themes instead of becoming a bright plate on a dark panel. */
+  --metal-1:#F7F7F6; --metal-2:#C9C9C6; --metal-3:#9C9C99; --metal-4:#D6D6D3;
+  --metal-i1:#6E6E6B; --metal-i2:#3A3A38;
+  --metal-shadow:rgba(0,0,0,.14);
+
+  --r-shell:32px; --r-card:24px; --r-pill:16px; --r-chip:12px; --r-well:999px;
+
+  /* Ambient occlusion, not drop shadows. If you can see the shadow as a
+     distinct shape, the alpha is too high. */
+  --shadow-card:0 2px 24px rgba(0,0,0,.04);
+  --shadow-pill:0 1px 10px rgba(0,0,0,.06);
+  --shadow-shell:0 8px 60px rgba(0,0,0,.06);
+  --shadow-hover:0 2px 14px rgba(0,0,0,.09);
+  --shadow-press:0 1px 4px rgba(0,0,0,.08);
+
+  /* Geometric-leaning grotesque, tall x-height, tight default tracking.
+     System-resident on purpose: the venue wifi is assumed dead, so there is
+     no webfont request anywhere in this build. */
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter Tight",
+         Inter,"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+}
+
+/* ═══ Dark plane ════════════════════════════════════════════════════════════
+   Selected, not flipped. Each step is picked against the dark surface it
+   actually sits on — an inverted light palette produces glowing pastels and
+   muddy mid-greys. Shape, spacing, radii and type are untouched: only the
+   planes and the ink change. Light mode above is unmodified.
+   ═════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+
+  /* Same elevation direction as light — page is the deepest, raised the
+     lightest — so "higher = lighter" stays true and the shell still reads as
+     a panel lying on a surface. */
+  --surface-page:#121211;
+  --surface-shell:#1A1A19;
+  --surface-card:#232322;
+  --surface-raised:#30302E;
+  --surface-hover:#3A3A37;
+  --fill-subtle:#2A2A28;
+  --text-primary:#EDEDEA;     /* never pure white, mirroring never-pure-black */
+  --text-secondary:#9A9A95;   /* ~5.6:1 on the card plane */
+  --text-tertiary:#7A7A75;    /* ~3.7:1 — brighter than its light counterpart */
+
+  /* Tinted planes go dark and the ink on them goes light. The hues are the
+     same family as light mode, just re-stepped for this surface. */
+  --positive-bg:#17301F;
+  --positive-ink:#8FD9B2;
+  --negative-bg:#341F19;
+  --negative-ink:#F2A48F;
+  --attention-bg:#31240F;
+  --attention-ink:#F5BE8E;
+  /* --positive / --negative solids and every --*-badge / --on-badge-* token
+     are deliberately NOT overridden: a pastel chip carrying dark ink reads
+     correctly on a dark panel, and leaving them fixed is what keeps the
+     badge-ink rule intact in both themes. */
+
+  /* Dark brushed metal rather than a bright plate; the inner glyph inverts
+     so the mark still reads as a lit object. */
+  --metal-1:#4E4E4A; --metal-2:#2E2E2C; --metal-3:#151514; --metal-4:#403F3C;
+  --metal-i1:#DCDCD8; --metal-i2:#97978F;
+  --metal-shadow:rgba(0,0,0,.55);
+
+  /* Occlusion needs real alpha to register on a dark plane; at .04 it is
+     invisible and every card loses its lift. */
+  --shadow-card:0 2px 24px rgba(0,0,0,.34);
+  --shadow-pill:0 1px 10px rgba(0,0,0,.40);
+  --shadow-shell:0 8px 60px rgba(0,0,0,.48);
+  --shadow-hover:0 2px 14px rgba(0,0,0,.46);
+  --shadow-press:0 1px 4px rgba(0,0,0,.42);
+}
+
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden;
-     font:15px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
-h1{font-size:20px;letter-spacing:.02em;margin:0 0 4px}
-.nav{display:flex;gap:20px;align-items:center;padding:12px 20px;
-     border-bottom:1px solid var(--line);background:var(--panel)}
-.nav a{color:var(--dim);text-decoration:none}
-.nav a.on{color:var(--accent)}
-.brand{font-weight:700;letter-spacing:.12em;margin-right:16px}
-main{padding:20px;max-width:1200px;margin:0 auto}
-.chips{display:flex;gap:10px;margin:16px 0}
-button{background:var(--panel);color:var(--ink);border:1px solid var(--line);
-       padding:8px 14px;cursor:pointer;font:inherit}
-button.danger{border-color:var(--deny);color:var(--deny)}
-input{background:var(--panel);border:1px solid var(--line);color:var(--ink);
-      padding:8px;width:420px;max-width:100%;font:inherit}
-form{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
-.ev{border-left:3px solid var(--line);background:var(--panel);
-    padding:10px 14px;margin-bottom:8px}
-.ev.allow{border-left-color:var(--allow)}
-/* The deny row is the point of the whole screen — it must win the eye from the
-   back of a room: thicker rule, deeper bed, brighter verdict. */
-.ev.deny{border-left-color:var(--deny);border-left-width:5px;background:#24141a}
-.ev.need_approval{border-left-color:var(--approve)}
-.ev.supervisor{border-left-color:var(--accent)}
-.ev.done{border-left-color:var(--allow);color:var(--allow)}
-.ev-head{display:flex;gap:10px;align-items:baseline}
-.mark{width:14px}
-.tool{font-weight:600}
-.args{color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.verdict{font-size:11px;letter-spacing:.1em}
-.ev.allow .verdict{color:var(--allow)}
-.ev.deny .verdict{color:var(--deny)}
-.ev.need_approval .verdict{color:var(--approve)}
-.ev.deny .verdict{font-weight:700}
-.ev-sub{color:var(--dim);font-size:13px;margin-left:24px;margin-top:3px;
-        overflow-wrap:anywhere}
-.ev-sub.arrow{color:var(--deny)}
-.ev-sub.rule{color:var(--dim);font-style:italic}
-/* A wide audit table scrolls inside its own box; the page itself never does. */
-.tblwrap{overflow-x:auto}
-.tbl{width:100%;border-collapse:collapse;font-size:13px}
-.tbl th{text-align:left;color:var(--dim);font-weight:400;text-transform:uppercase;
-        font-size:10px;letter-spacing:.12em;padding:8px;border-bottom:1px solid var(--line)}
-.tbl td{padding:8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
-.tbl tr.deny td{background:#1d1416}
-.tbl tr.deny .verdict{color:var(--deny)}
-.tbl tr.allow .verdict{color:var(--allow)}
-.tbl tr.need_approval .verdict{color:var(--approve)}
-.tbl tr.ungoverned .verdict{color:#a78bfa}
-.dim{color:var(--dim)}
-.ev.ungoverned{border-left-color:#8b5cf6;background:#1a1526}
-.ev.ungoverned .verdict{color:#a78bfa}
-.toggle{display:inline-flex;gap:6px;align-items:center;margin-left:16px;
-        color:var(--dim);cursor:pointer}
-h2{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;
-   margin:26px 0 10px}
-.bar{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-.bar .lbl{width:130px;color:var(--dim);font-size:12px}
-.bar .track{flex:1;height:18px;background:#1b1f27;border:1px solid var(--line)}
-.bar .fill{display:block;height:100%}
-.bar .fill.deny{background:var(--deny)}
-.bar .fill.allow{background:var(--allow)}
-.bar .num{width:130px;font-size:12px}
+
+body{
+  margin:0;padding:20px;
+  background:var(--surface-page);
+  color:var(--text-primary);
+  font:500 17px/1.5 var(--font);
+  letter-spacing:-.005em;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* ── The panel resting on a surface ──────────────────────────────────────── */
+.shell{
+  position:relative;
+  max-width:1500px;margin:0 auto;
+  min-height:calc(100vh - 40px);
+  background:var(--surface-shell);
+  border-radius:var(--r-shell);
+  box-shadow:var(--shadow-shell);
+  display:flex;
+}
+
+/* ── Theme switch ────────────────────────────────────────────────────────────
+   Anchored to the panel's top-right corner rather than to the content flow, so
+   it never shifts as pages change height. An icon well, like every other
+   circular affordance in the system. */
+.themetoggle{
+  position:absolute;top:28px;right:28px;z-index:3;
+  width:48px;height:48px;padding:0;
+  border-radius:var(--r-well);
+  background:var(--surface-card);
+  box-shadow:var(--shadow-pill);
+  display:grid;place-items:center;
+}
+.themetoggle .ico{width:22px;height:22px;color:var(--text-secondary)}
+.themetoggle:hover{background:var(--surface-raised)}
+.themetoggle:hover .ico{color:var(--text-primary)}
+/* Show the theme you'd switch TO, not the one you're in. */
+:root[data-theme="dark"] .themetoggle .moon{display:none}
+:root:not([data-theme="dark"]) .themetoggle .sun{display:none}
+/* Sidebar and content share one plane — no separator. The cards floating on
+   the right are what distinguishes them. */
+.sidebar{width:320px;flex:none;padding:32px 20px}
+.content{flex:1;min-width:0;padding:40px 40px 56px}
+
+/* ── Brand: the one material object ──────────────────────────────────────── */
+.brand{display:flex;align-items:center;gap:14px;padding:0 18px;margin-bottom:40px}
+.logomark{width:44px;height:44px;flex:none;
+          filter:drop-shadow(0 2px 6px var(--metal-shadow))}
+.wordmark{font-size:20px;font-weight:600;letter-spacing:-.01em}
+
+/* ── Navigation ──────────────────────────────────────────────────────────── */
+.nav{display:flex;flex-direction:column;gap:4px}
+.navitem{
+  display:flex;align-items:center;gap:14px;
+  height:56px;padding:0 18px;
+  border-radius:var(--r-pill);
+  color:var(--text-secondary);
+  font-size:20px;font-weight:500;
+  text-decoration:none;
+}
+.navitem:hover{color:var(--text-primary)}
+.ico{width:24px;height:24px;flex:none;
+     fill:none;stroke:currentColor;stroke-width:1.5;
+     stroke-linecap:round;stroke-linejoin:round}
+/* Active state: the pill IS the indicator, so the icon steps aside. */
+.navitem.on{
+  background:var(--surface-raised);
+  box-shadow:var(--shadow-pill);
+  color:var(--text-primary);
+  font-weight:600;
+}
+.navitem.on .ico{display:none}
+.count{
+  margin-left:auto;
+  min-width:26px;height:26px;padding:0 9px;
+  border-radius:var(--r-chip);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:600;letter-spacing:0;
+}
+.count.attention{background:var(--attention-badge);color:var(--on-badge-attention)}
+.count.healthy{background:var(--positive-badge);color:var(--on-badge-positive)}
+
+/* ── Page type. Sentence case throughout; no uppercase eyebrows. ─────────── */
+/* Reserve the switch's corner so a long title can never run under it. */
+h1{font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1.08;
+   margin:0 0 12px;padding-right:56px}
+h2{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:48px 0 20px}
+.lede{font-size:20px;font-weight:500;color:var(--text-secondary);
+      max-width:70ch;margin:0 0 8px;line-height:1.45}
+.dim{color:var(--text-secondary)}
+/* Definitions live behind this glyph, never in inline helper text. */
+.help{
+  width:22px;height:22px;flex:none;
+  border-radius:var(--r-well);background:var(--fill-subtle);
+  color:var(--text-tertiary);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:600;cursor:help;letter-spacing:0;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.card{
+  background:var(--surface-card);
+  border-radius:var(--r-card);
+  box-shadow:var(--shadow-card);
+  padding:40px;
+}
+.cards{display:flex;gap:20px;flex-wrap:wrap}
+.cards > .card{flex:1;min-width:320px}
+
+/* ── Metric tile ─────────────────────────────────────────────────────────── */
+.well{
+  width:72px;height:72px;border-radius:var(--r-well);
+  background:var(--fill-subtle);
+  display:grid;place-items:center;margin-bottom:56px;
+}
+.well .ico{width:28px;height:28px;color:var(--text-secondary)}
+.k{display:flex;align-items:center;gap:8px;
+   font-size:20px;font-weight:500;color:var(--text-secondary);margin-bottom:12px}
+/* The number is the display type — it outweighs every heading on the page.
+   Proportional figures: tabular would give `100` the loose spacing of `000`
+   at this size. Tabular is reserved for the timeline's columns. */
+.big{font-size:96px;font-weight:700;letter-spacing:-.03em;line-height:.92;
+     display:block}
+.unit{font-size:64px;font-weight:500;color:var(--text-tertiary);
+      letter-spacing:-.02em}
+.card.off .big{color:var(--negative-ink)}
+.card.on .big{color:var(--positive-ink)}
+.card.empty .big{color:var(--text-tertiary)}
+.of{display:block;font-size:17px;font-weight:500;color:var(--text-secondary);
+    margin-top:20px}
+/* Delta pill: direction × whether up is good. */
+.delta{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 13px;border-radius:var(--r-chip);
+  font-size:17px;font-weight:600;letter-spacing:0;margin-top:24px;
+}
+.delta.good{background:var(--positive-bg);color:var(--positive-ink)}
+.delta.bad{background:var(--negative-bg);color:var(--negative-ink)}
+.delta.flat{background:var(--fill-subtle);color:var(--text-secondary)}
+
+/* ── Job state strip ─────────────────────────────────────────────────────── */
+/* The trust flip is the whole argument of the product, so it holds permanent
+   screen space instead of surfacing only inside a denial. */
+.strip{
+  background:var(--surface-card);border-radius:var(--r-card);
+  box-shadow:var(--shadow-card);padding:32px 40px;margin-bottom:24px;
+  display:flex;gap:40px;flex-wrap:wrap;
+}
+.strip .cell{flex:1;min-width:260px}
+.strip .v{font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1.1;
+          display:block}
+.strip .note{display:block;font-size:17px;font-weight:500;
+             color:var(--text-secondary);margin-top:8px}
+/* A state word, not a measurement — so it wears a chip, not display type. */
+.state{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 16px;border-radius:var(--r-chip);
+  font-size:24px;font-weight:600;letter-spacing:-.01em;
+  background:var(--positive-bg);color:var(--positive-ink);
+}
+.strip.tainted .state{background:var(--attention-badge);color:var(--on-badge-attention)}
+
+/* ── Event rows ──────────────────────────────────────────────────────────── */
+.ev{
+  background:var(--surface-card);border-radius:var(--r-card);
+  box-shadow:var(--shadow-card);padding:24px 28px;margin-bottom:12px;
+}
+/* Colour carries the verdict. A denial recolours its whole plane, which is
+   the strongest signal available in a system with no borders. */
+.ev.deny{background:var(--negative-bg)}
+.ev.need_approval{background:var(--attention-bg)}
+.ev.ungoverned{background:var(--fill-subtle)}
+.ev.done{background:var(--positive-bg)}
+.ev-head{display:flex;align-items:center;gap:16px}
+.tool{font-size:24px;font-weight:600;letter-spacing:-.01em;flex:none}
+/* Overflow fades rather than truncating — an ellipsis says "cut off", a fade
+   says "continues". */
+.args{
+  flex:1;min-width:0;
+  font-size:17px;font-weight:500;color:var(--text-secondary);
+  white-space:nowrap;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to right,#000 0,#000 80%,transparent 100%);
+          mask-image:linear-gradient(to right,#000 0,#000 80%,transparent 100%);
+}
+.verdict{
+  flex:none;display:inline-flex;align-items:center;gap:7px;
+  padding:7px 14px;border-radius:var(--r-chip);
+  font-size:15px;font-weight:600;letter-spacing:0;white-space:nowrap;
+  background:var(--fill-subtle);color:var(--text-secondary);
+}
+.ev.allow .verdict{background:var(--positive-bg);color:var(--positive-ink)}
+.ev.deny .verdict{background:var(--negative);color:var(--on-badge-negative)}
+.ev.need_approval .verdict{background:var(--attention-badge);color:var(--on-badge-attention)}
+.ev.done .verdict{background:var(--positive-badge);color:var(--on-badge-positive)}
+.ev-sub{font-size:17px;font-weight:500;color:var(--text-secondary);
+        margin-top:10px;overflow-wrap:anywhere}
+.ev-sub.arrow{color:var(--negative-ink)}
+.ev-sub.rule{color:var(--text-tertiary)}
+.ev.supervisor .tool{font-weight:500;color:var(--text-secondary)}
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+.chips{display:flex;gap:12px;margin:0 0 20px;flex-wrap:wrap;align-items:center}
+button{
+  font:600 17px/1 var(--font);letter-spacing:-.005em;
+  background:var(--surface-raised);color:var(--text-primary);
+  border:0;border-radius:var(--r-pill);
+  padding:16px 22px;cursor:pointer;
+  box-shadow:var(--shadow-pill);
+}
+button:hover{background:var(--surface-hover);box-shadow:var(--shadow-hover)}
+button:active{box-shadow:var(--shadow-press)}
+button.danger{background:var(--negative-bg);color:var(--negative-ink)}
+button.go{background:var(--text-primary);color:var(--surface-card)}
+input{
+  font:500 17px/1 var(--font);
+  background:var(--surface-raised);color:var(--text-primary);
+  border:0;border-radius:var(--r-pill);
+  padding:16px 20px;width:440px;max-width:100%;
+  box-shadow:var(--shadow-pill);
+}
+input::placeholder{color:var(--text-tertiary)}
+input:focus{outline:2px solid var(--text-tertiary);outline-offset:2px}
+form{display:flex;gap:12px;margin:0 0 24px;flex-wrap:wrap}
+/* Switch — the pill slides, nothing is outlined. */
+.toggle{display:inline-flex;align-items:center;gap:12px;cursor:pointer;
+        font-size:17px;font-weight:500;color:var(--text-secondary);
+        margin-left:4px;user-select:none}
+.toggle input{position:absolute;opacity:0;width:0;height:0;box-shadow:none}
+.track{width:56px;height:32px;border-radius:var(--r-well);
+       background:var(--fill-subtle);position:relative;flex:none;
+       transition:background .18s ease}
+.track::after{content:"";position:absolute;top:4px;left:4px;
+              width:24px;height:24px;border-radius:var(--r-well);
+              background:var(--surface-raised);box-shadow:var(--shadow-pill);
+              transition:transform .18s ease}
+.toggle input:checked + .track{background:var(--positive-badge)}
+.toggle input:checked + .track::after{transform:translateX(24px)}
+.toggle b{color:var(--text-primary);font-weight:600}
+
+/* ── Timeline table ──────────────────────────────────────────────────────── */
+/* Rows are separated by a gap in the shell tone, not by rules. */
+.tblwrap{overflow-x:auto;padding-bottom:4px}
+.tbl{width:100%;border-collapse:separate;border-spacing:0 8px;
+     font-variant-numeric:tabular-nums}
+.tbl th{
+  text-align:left;padding:0 20px 12px;
+  font-size:17px;font-weight:500;color:var(--text-secondary);
+  white-space:nowrap;
+}
+.tbl td{padding:18px 20px;font-size:17px;font-weight:500;
+        background:var(--surface-card);overflow-wrap:anywhere}
+.tbl td:first-child{border-radius:var(--r-chip) 0 0 var(--r-chip)}
+.tbl td:last-child{border-radius:0 var(--r-chip) var(--r-chip) 0}
+.tbl tr.deny td{background:var(--negative-bg)}
+.tbl tr.need_approval td{background:var(--attention-bg)}
+.tbl tr.ungoverned td{background:var(--fill-subtle)}
+.tbl .verdict{font-size:15px}
+.tbl tr.allow .verdict{background:var(--positive-bg);color:var(--positive-ink)}
+.tbl tr.deny .verdict{background:var(--negative);color:var(--on-badge-negative)}
+.tbl tr.need_approval .verdict{background:var(--attention-badge);color:var(--on-badge-attention)}
+.tbl tr.ungoverned .verdict{background:var(--surface-card);color:var(--text-secondary)}
+.tbl .soft{color:var(--text-secondary)}
+
+/* ── Empty states ────────────────────────────────────────────────────────── */
+.empty{color:var(--text-secondary);font-size:20px;padding:8px 0}
+
+@media (max-width:900px){
+  .shell{flex-direction:column}
+  .sidebar{width:auto}
+  .nav{flex-direction:row;flex-wrap:wrap}
+  .content{padding:24px}
+  .big{font-size:72px}
+  .unit{font-size:48px}
+  h1{font-size:34px}
+}

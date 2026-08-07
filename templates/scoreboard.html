@@ -1,27 +1,97 @@
 {% extends "base.html" %}
 {% block body %}
 <h1>Adversarial scoreboard</h1>
-<p class="dim">Injection attacks that must be blocked, and ordinary business tasks that
-must still complete — every case run twice against the live model, once with the kernel
-off and once on. Counts below are cases <em>actually run</em>, out of a 50-case corpus.
-Nothing is projected. Last case recorded {{ t.last_run|clock }}.</p>
+<p class="lede">Injection attacks that must be blocked, and ordinary business tasks
+that must still complete — every case run twice against the live model, once with
+the kernel off and once on.</p>
+<p class="lede">Each arm is scored against the cases that arm actually ran, out of a
+{{ t.corpus_attacks + t.corpus_benign }}-case corpus ({{ t.corpus_attacks }} attacks,
+{{ t.corpus_benign }} benign). Nothing is projected and nothing is tuned. Last case
+recorded {{ t.last_run|clock }}.</p>
 
-<h2>{{ t.attacks_total }} injection attack{{ 's' if t.attacks_total != 1 }}</h2>
-<div class="bar"><span class="lbl">agent alone</span>
-  <span class="track"><i class="fill deny" style="width:{{ (t.attacks_landed_baseline/t.attacks_total*100)|round }}%"></i></span>
-  <span class="num">{{ t.attacks_landed_baseline }} of {{ t.attacks_total }} succeeded</span></div>
-<div class="bar"><span class="lbl">+ Agent Tower</span>
-  <span class="track"><i class="fill deny" style="width:{{ (t.attacks_landed_governed/t.attacks_total*100)|round }}%"></i></span>
-  <span class="num">{{ t.attacks_landed_governed }} of {{ t.attacks_total }} succeeded</span></div>
+{% set ab = t.attacks_run_baseline %}
+{% set ag = t.attacks_run_governed %}
+{% set r_ab = (t.attacks_landed_baseline / ab * 100) if ab else none %}
+{% set r_ag = (t.attacks_landed_governed / ag * 100) if ag else none %}
 
-<h2>{{ t.benign_total }} ordinary business task{{ 's' if t.benign_total != 1 }}</h2>
-<div class="bar"><span class="lbl">agent alone</span>
-  <span class="track"><i class="fill allow" style="width:{{ (t.benign_done_baseline/t.benign_total*100)|round }}%"></i></span>
-  <span class="num">{{ t.benign_done_baseline }} of {{ t.benign_total }} completed</span></div>
-<div class="bar"><span class="lbl">+ Agent Tower</span>
-  <span class="track"><i class="fill allow" style="width:{{ (t.benign_done_governed/t.benign_total*100)|round }}%"></i></span>
-  <span class="num">{{ t.benign_done_governed }} of {{ t.benign_total }} completed</span></div>
+<h2>Injection attacks that succeeded</h2>
+<div class="cards">
+  <div class="card {{ 'off' if ab else 'empty' }}">
+    <span class="well"><svg class="ico"><use href="#i-agent"/></svg></span>
+    <span class="k">Agent alone
+      <span class="help" title="The same model, the same attacks, with no kernel in the path. This is the control arm.">?</span></span>
+    {% if ab %}
+      <span class="big">{{ r_ab|round|int }}<span class="unit">%</span></span>
+      <span class="of">{{ t.attacks_landed_baseline }} of {{ ab }} attacks landed</span>
+    {% else %}
+      <span class="big">—</span>
+      <span class="of">No cases run yet</span>
+    {% endif %}
+  </div>
+  <div class="card {{ 'on' if ag else 'empty' }}">
+    <span class="well"><svg class="ico"><use href="#i-shield"/></svg></span>
+    <span class="k">With Agent Tower
+      <span class="help" title="Identical cases, identical model. The only change is that every tool call is routed through the kernel.">?</span></span>
+    {% if ag %}
+      <span class="big">{{ r_ag|round|int }}<span class="unit">%</span></span>
+      {% if r_ab is not none %}
+        {% set gap = (r_ab - r_ag)|round|int %}
+        <span class="delta {{ 'good' if gap > 0 else 'flat' }}">
+          {% if gap > 0 %}↓{% endif %} {{ gap }} points</span>
+        <span class="of">{{ t.attacks_landed_governed }} of {{ ag }} attacks landed
+          — vs agent alone</span>
+      {% else %}
+        <span class="of">{{ t.attacks_landed_governed }} of {{ ag }} attacks landed</span>
+      {% endif %}
+    {% else %}
+      <span class="big">—</span>
+      <span class="of">No cases run yet</span>
+    {% endif %}
+  </div>
+</div>
 
-<p class="dim">Blocking everything is easy and useless. The second pair is the
-proof that ordinary work still runs.</p>
+{% set bb = t.benign_run_baseline %}
+{% set bg = t.benign_run_governed %}
+{% set r_bb = (t.benign_done_baseline / bb * 100) if bb else none %}
+{% set r_bg = (t.benign_done_governed / bg * 100) if bg else none %}
+
+<h2>Ordinary business tasks completed</h2>
+<div class="cards">
+  <div class="card {{ 'on' if bb else 'empty' }}">
+    <span class="well"><svg class="ico"><use href="#i-agent"/></svg></span>
+    <span class="k">Agent alone
+      <span class="help" title="Legitimate work with no attack in it, run without the kernel.">?</span></span>
+    {% if bb %}
+      <span class="big">{{ r_bb|round|int }}<span class="unit">%</span></span>
+      <span class="of">{{ t.benign_done_baseline }} of {{ bb }} tasks completed</span>
+    {% else %}
+      <span class="big">—</span>
+      <span class="of">No cases run yet</span>
+    {% endif %}
+  </div>
+  <div class="card {{ 'on' if bg else 'empty' }}">
+    <span class="well"><svg class="ico"><use href="#i-shield"/></svg></span>
+    <span class="k">With Agent Tower
+      <span class="help" title="Blocking everything would score zero here. This is the number that proves the kernel is surgical rather than blunt.">?</span></span>
+    {% if bg %}
+      <span class="big">{{ r_bg|round|int }}<span class="unit">%</span></span>
+      {% if r_bb is not none %}
+        {% set gap = (r_bg - r_bb)|round|int %}
+        <span class="delta {{ 'good' if gap > 0 else ('bad' if gap < 0 else 'flat') }}">
+          {% if gap > 0 %}↑{% elif gap < 0 %}↓{% endif %}
+          {{ gap if gap != 0 else 'No change' }}{% if gap != 0 %} points{% endif %}</span>
+        <span class="of">{{ t.benign_done_governed }} of {{ bg }} tasks completed
+          — vs agent alone</span>
+      {% else %}
+        <span class="of">{{ t.benign_done_governed }} of {{ bg }} tasks completed</span>
+      {% endif %}
+    {% else %}
+      <span class="big">—</span>
+      <span class="of">No cases run yet</span>
+    {% endif %}
+  </div>
+</div>
+
+<p class="lede" style="margin-top:32px">Blocking everything is easy and useless.
+The second pair is the proof that ordinary work still runs.</p>
 {% endblock %}

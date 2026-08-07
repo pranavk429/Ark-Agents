@@ -37,6 +37,25 @@ templates.env.filters["plain_risk"] = _plain_risk
 import db
 
 
+def _pending_approvals() -> int:
+    """Count of holds waiting on a human, for the sidebar badge.
+
+    Chrome must never be able to break a page: any failure here returns 0 and
+    the badge simply does not render. Exposed as a template global so every
+    screen shows the badge without threading a value through each route.
+    """
+    try:
+        with db.connect() as c:
+            row = c.execute(
+                "SELECT COUNT(*) AS n FROM approvals WHERE status='pending'").fetchone()
+        return int(row["n"]) if row else 0
+    except Exception:
+        return 0
+
+
+templates.env.globals["pending_approvals"] = _pending_approvals
+
+
 @app.on_event("startup")
 def _startup():
     db.init()
@@ -90,10 +109,35 @@ def run_page(request: Request, job: str | None = None):
         "run.html", {"request": request, "page": "run", "job_id": job})
 
 
+from kernel.labels import STORE
+
+
+def _job_state(job_id: str) -> dict:
+    """What the kernel is holding for this job, for the header strip.
+
+    The trust flip is the whole thesis of the product and it was previously
+    only visible as a side effect inside a denial. Every field here is
+    kernel-side state — a label, a count, a tool name — never tool output.
+    """
+    job = db.get_job(job_id)
+    handles = STORE.all(job_id)
+    trust = (job["context_trust"] if job else "trusted") or "trusted"
+    first_untrusted = next((h for h in handles if h.trust == "untrusted"), None)
+    return {
+        "trust": trust,
+        "handles": len(handles),
+        "private": sum(1 for h in handles if h.sensitivity == "private"),
+        # Which step poisoned the context. None until something untrusted lands.
+        "flipped_by": first_untrusted.source if first_untrusted else None,
+        "flipped_at": first_untrusted.step if first_untrusted else None,
+    }
+
+
 @app.get("/runs/{job_id}/events", response_class=HTMLResponse)
 def run_events(request: Request, job_id: str):
     return templates.TemplateResponse(
-        "_events.html", {"request": request, "events": db.events_for(job_id)})
+        "_events.html", {"request": request, "events": db.events_for(job_id),
+                         "state": _job_state(job_id)})
 
 
 @app.get("/timeline", response_class=HTMLResponse)

@@ -1,12 +1,13 @@
-{% if not rows %}<p class="dim">Nothing pending.</p>{% endif %}
+{% if not rows %}<p class="empty">Nothing pending.</p>{% endif %}
 {% for a in rows %}
 <div class="ev need_approval">
-  <div class="ev-head"><span class="mark">◐</span>
+  <div class="ev-head">
     <span class="tool">{{ a.tool }}</span>
     <span class="args">{{ a.args_preview }}</span>
-    <span class="verdict">WAITING</span></div>
-  <div class="ev-sub">why: {{ a.risk|plain_risk }}</div>
-  <div class="ev-sub">
+    <span class="verdict">◐ Waiting</span>
+  </div>
+  <div class="ev-sub">Why: {{ a.risk|plain_risk }}</div>
+  <div class="chips" style="margin:20px 0 0">
     <button hx-post="/approvals/{{ a.id }}/decide?d=approved" hx-swap="none">Approve</button>
     <button class="danger" hx-post="/approvals/{{ a.id }}/decide?d=rejected" hx-swap="none">Reject</button>
   </div>

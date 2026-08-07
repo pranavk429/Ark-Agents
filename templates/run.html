@@ -1,23 +1,30 @@
 {% extends "base.html" %}
 {% block body %}
 <h1>Run a job</h1>
+<p class="lede">The agent has no direct access to any tool. Every call it makes
+arrives here first.</p>
+
 <div class="chips">
   <button onclick="go('clean')">Normal ticket</button>
   <button onclick="go('injected')" class="danger">Poisoned ticket</button>
   <button onclick="go('bulk_export')">Manager bulk export</button>
   <label class="toggle">
-    <input type="checkbox" id="gov" checked> Tower: <b id="govtxt">ON</b>
+    <input type="checkbox" id="gov" checked><span class="track"></span>
+    Tower <b id="govtxt">on</b>
   </label>
 </div>
+
 <form onsubmit="event.preventDefault();goTask(this.task.value)">
-  <input name="task" placeholder="or type your own task / attack…" autocomplete="off">
-  <button>Run live</button>
+  <input name="task" placeholder="or type your own task or attack…" autocomplete="off">
+  <button class="go">Run live</button>
 </form>
+
 <div id="events" {% if job_id %}hx-get="/runs/{{ job_id }}/events"
      hx-trigger="load, every 600ms" hx-swap="innerHTML"{% endif %}></div>
+
 <script>
 const gov = document.getElementById('gov');
-gov.onchange = () => document.getElementById('govtxt').textContent = gov.checked ? 'ON' : 'OFF';
+gov.onchange = () => document.getElementById('govtxt').textContent = gov.checked ? 'on' : 'off';
 async function go(scenario){
   const r = await fetch('/runs',{method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({scenario,mode:'scripted',governed:gov.checked})});

@@ -1,22 +1,33 @@
 {% extends "base.html" %}
 {% block body %}
 <h1>Decision timeline</h1>
-<p class="dim">Every tool call the kernel evaluated, newest first. Append-only.</p>
+<p class="lede">Every tool call the kernel evaluated, newest first. Append-only —
+the record is written before the tool runs, so nothing that executed is missing
+from it.</p>
+
 <div class="tblwrap">
 <table class="tbl">
-  <tr><th>time</th><th>job</th><th>tool</th><th>verdict</th><th>rule</th>
-      <th>labels</th><th>ms</th></tr>
+  <thead>
+    <tr><th>Time</th><th>Job</th><th>Tool</th><th>Verdict</th><th>Rule</th>
+        <th>Labels</th><th>ms</th></tr>
+  </thead>
+  <tbody>
   {% for e in rows %}
-  <tr class="{{ e.decision }}">
-    <td>{{ e.created_at|clock }}</td>
-    <td>{{ e.job_id }}</td>
-    <td>{{ e.tool }}</td>
-    <td class="verdict">{{ e.decision|upper }}</td>
-    <td>{{ e.data.rule_id }}</td>
-    <td>{{ e.data.labels_in|join(' ') }}</td>
-    <td>{{ e.data.duration_ms }}</td>
-  </tr>
+    <tr class="{{ e.decision }}">
+      <td class="soft">{{ e.created_at|clock }}</td>
+      <td class="soft">{{ e.job_id }}</td>
+      <td>{{ e.tool }}</td>
+      <td><span class="verdict">{% if e.decision=='allow' %}✓ Allowed
+        {%- elif e.decision=='deny' %}✕ Denied
+        {%- elif e.decision=='ungoverned' %}○ Not evaluated
+        {%- else %}◐ {{ e.decision }}{% endif %}</span></td>
+      <td class="soft">{{ e.data.rule_id }}</td>
+      <td class="soft">{{ e.data.labels_in|join(' · ') }}</td>
+      <td class="soft">{{ e.data.duration_ms }}</td>
+    </tr>
   {% endfor %}
+  </tbody>
 </table>
 </div>
+{% if not rows %}<p class="empty">No decisions recorded yet.</p>{% endif %}
 {% endblock %}

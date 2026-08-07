@@ -1,42 +1,73 @@
+{% if state %}
+<div class="strip {{ 'tainted' if state.trust == 'untrusted' }}">
+  <div class="cell">
+    <span class="k">Job context
+      <span class="help" title="Trust is a property of where data came from, not of what it says. Reading any outside content marks the whole job untrusted — that is what constrains later tool calls.">?</span></span>
+    <span class="state">{{ 'Untrusted' if state.trust == 'untrusted' else 'Trusted' }}</span>
+    {% if state.flipped_by %}
+      <span class="note">Flipped at step {{ state.flipped_at }} by {{ state.flipped_by }}</span>
+    {% else %}
+      <span class="note">Nothing untrusted read yet</span>
+    {% endif %}
+  </div>
+  <div class="cell">
+    <span class="k">Data held
+      <span class="help" title="A tool never returns raw data to the agent. It returns an opaque handle; the kernel keeps the value and its labels.">?</span></span>
+    <span class="v">{{ state.handles }}</span>
+    <span class="note">{{ 'Handle' if state.handles == 1 else 'Handles' }}{% if state.private %},
+      {{ state.private }} private{% endif %} — the agent holds none of it</span>
+  </div>
+</div>
+{% endif %}
 {% for e in events %}
   {% if e.kind == 'decision' %}
     {% set d = e.data %}
     <div class="ev {{ e.decision }}">
       <div class="ev-head">
-        <span class="mark">{% if e.decision=='allow' %}●{% elif e.decision=='deny' %}✕{% elif e.decision=='ungoverned' %}⚠{% else %}◐{% endif %}</span>
         <span class="tool">{{ e.tool }}</span>
         <span class="args">{{ d.args_preview }}</span>
-        <span class="verdict">{{ e.decision|upper }}</span>
+        <span class="verdict">{% if e.decision=='allow' %}✓ Allowed
+          {%- elif e.decision=='deny' %}✕ Denied
+          {%- elif e.decision=='ungoverned' %}○ Not evaluated
+          {%- else %}◐ {{ e.decision }}{% endif %}</span>
       </div>
-      {% if d.labels_in %}<div class="ev-sub">tagged {{ d.labels_in|join(' · ') }}</div>{% endif %}
+      {% if d.labels_in %}<div class="ev-sub">Tagged {{ d.labels_in|join(' · ') }}</div>{% endif %}
       {% if e.decision != 'allow' %}
         {% for p in d.provenance or [] %}<div class="ev-sub arrow">{{ p }}</div>{% endfor %}
         {% if not d.provenance %}
           {% for c in d.contributing %}<div class="ev-sub arrow">carries data ← {{ c }}</div>{% endfor %}
         {% endif %}
-        <div class="ev-sub rule">rule: {{ d.rule_id }}</div>
+        <div class="ev-sub rule">Rule {{ d.rule_id }}</div>
       {% endif %}
     </div>
   {% elif e.kind == 'pending' %}
     <div class="ev need_approval">
       <div class="ev-head">
-        <span class="mark">◐</span>
         <span class="tool">{{ e.data.tool }}</span>
         <span class="args">{{ e.data.args_preview }}</span>
-        <span class="verdict">WAITING FOR HUMAN</span>
+        <span class="verdict">◐ Waiting for a human</span>
       </div>
       {% for p in e.data.provenance or [] %}<div class="ev-sub arrow">{{ p }}</div>{% endfor %}
-      <div class="ev-sub rule">rule: {{ e.data.rule_id }} — the agent is paused here</div>
+      <div class="ev-sub rule">Rule {{ e.data.rule_id }} — the agent is paused here</div>
     </div>
   {% elif e.kind == 'supervisor' %}
     <div class="ev supervisor">
-      <div class="ev-head"><span class="mark">↻</span>
+      <div class="ev-head">
         <span class="tool">Recovery Supervisor</span>
-        <span class="verdict">{{ e.data.action }}</span></div>
+        <span class="args"></span>
+        {# The stored action is an enum in the audit record and stays that way;
+           only its presentation is humanised, per the sentence-case rule. #}
+        <span class="verdict">↻ {{ e.data.action|replace('_',' ')|lower|capitalize }}</span>
+      </div>
       <div class="ev-sub">{{ e.data.guidance }}</div>
     </div>
   {% elif e.kind == 'complete' %}
-    <div class="ev done"><div class="ev-head"><span class="mark">✓</span>
-      <span class="tool">{{ e.data.message }}</span></div></div>
+    <div class="ev done">
+      <div class="ev-head">
+        <span class="tool">{{ e.data.message }}</span>
+        <span class="args"></span>
+        <span class="verdict">✓ Done</span>
+      </div>
+    </div>
   {% endif %}
 {% endfor %}
