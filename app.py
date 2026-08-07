@@ -1,4 +1,5 @@
 import os
+import time as _time
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +10,10 @@ BASE = Path(__file__).parent
 app = FastAPI(title="Agent Tower")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
+
+# An audit record is read by a human. Wall-clock beats a unix epoch on screen.
+templates.env.filters["clock"] = lambda ts: _time.strftime("%H:%M:%S",
+                                                           _time.localtime(ts))
 
 import db
 
@@ -68,3 +73,10 @@ def run_page(request: Request, job: str | None = None):
 def run_events(request: Request, job_id: str):
     return templates.TemplateResponse(
         "_events.html", {"request": request, "events": db.events_for(job_id)})
+
+
+@app.get("/timeline", response_class=HTMLResponse)
+def timeline(request: Request):
+    return templates.TemplateResponse(
+        "timeline.html", {"request": request, "page": "timeline",
+                          "rows": db.all_decisions()})
