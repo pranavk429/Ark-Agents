@@ -10,6 +10,13 @@ app = FastAPI(title="Agent Tower")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 
+import db
+
+
+@app.on_event("startup")
+def _startup():
+    db.init()
+
 
 @app.get("/health")
 def health():
