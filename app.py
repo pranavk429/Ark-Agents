@@ -21,3 +21,19 @@ def _startup():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+from pydantic import BaseModel
+from kernel.gateway import execute as gateway_execute
+
+
+class ExecuteIn(BaseModel):
+    job_id: str
+    tool: str
+    args: dict = {}
+    step: int = 0
+
+
+@app.post("/gateway/execute")
+def gateway(body: ExecuteIn):
+    return gateway_execute(body.job_id, body.tool, body.args, body.step)
