@@ -71,11 +71,13 @@ class RunIn(BaseModel):
     mode: str = "scripted"
     task: str | None = None
     pack: str = "support"
+    governed: bool = True
 
 
 @app.post("/runs")
 def create_run(body: RunIn):
-    job_id = start_run(body.scenario, body.mode, body.task, body.pack)
+    job_id = start_run(body.scenario, body.mode, body.task, body.pack,
+                       body.governed)
     return {"job_id": job_id}
 
 

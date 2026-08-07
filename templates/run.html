@@ -5,6 +5,9 @@
   <button onclick="go('clean')">Normal ticket</button>
   <button onclick="go('injected')" class="danger">Poisoned ticket</button>
   <button onclick="go('bulk_export')">Manager bulk export</button>
+  <label class="toggle">
+    <input type="checkbox" id="gov" checked> Tower: <b id="govtxt">ON</b>
+  </label>
 </div>
 <form onsubmit="event.preventDefault();goTask(this.task.value)">
   <input name="task" placeholder="or type your own task / attack…" autocomplete="off">
@@ -13,14 +16,16 @@
 <div id="events" {% if job_id %}hx-get="/runs/{{ job_id }}/events"
      hx-trigger="load, every 600ms" hx-swap="innerHTML"{% endif %}></div>
 <script>
+const gov = document.getElementById('gov');
+gov.onchange = () => document.getElementById('govtxt').textContent = gov.checked ? 'ON' : 'OFF';
 async function go(scenario){
   const r = await fetch('/runs',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({scenario,mode:'scripted'})});
+    body:JSON.stringify({scenario,mode:'scripted',governed:gov.checked})});
   const {job_id} = await r.json(); location.href = '/?job=' + job_id;
 }
 async function goTask(task){
   const r = await fetch('/runs',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({task,mode:'live'})});
+    body:JSON.stringify({task,mode:'live',governed:gov.checked})});
   const {job_id} = await r.json(); location.href = '/?job=' + job_id;
 }
 </script>

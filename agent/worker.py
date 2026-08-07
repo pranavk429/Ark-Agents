@@ -42,10 +42,10 @@ SCRIPTS = {
 }
 
 
-def _run_scripted(job_id, scenario):
+def _run_scripted(job_id, scenario, governed=True):
     from agent.supervisor import recover
     for step, (tool, args) in enumerate(SCRIPTS[scenario], start=1):
-        res = execute(job_id, tool, args, step)
+        res = execute(job_id, tool, args, step, governed)
         if res["status"] == "denied":
             guidance = recover(job_id, step, tool, res["rule"], res["reason"])
             db.append_event(job_id, step, "supervisor",
@@ -54,15 +54,16 @@ def _run_scripted(job_id, scenario):
     db.set_job(job_id, status="done")
 
 
-def start(scenario="clean", mode="scripted", task=None, pack="support"):
+def start(scenario="clean", mode="scripted", task=None, pack="support",
+          governed=True):
     job_id = uuid.uuid4().hex[:8]
     db.new_job(job_id, task or f"scenario:{scenario}", pack, mode)
     if mode == "scripted":
         target = _run_scripted
-        args = (job_id, scenario if scenario in SCRIPTS else "clean")
+        args = (job_id, scenario if scenario in SCRIPTS else "clean", governed)
     else:
         from agent.live import run_live
         target = run_live
-        args = (job_id, task or "", pack)
+        args = (job_id, task or "", pack, governed)
     threading.Thread(target=target, args=args, daemon=True).start()
     return job_id

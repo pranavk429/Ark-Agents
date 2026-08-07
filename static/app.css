@@ -42,4 +42,9 @@ form{display:flex;gap:8px;margin-bottom:20px}
 .tbl tr.deny .verdict{color:var(--deny)}
 .tbl tr.allow .verdict{color:var(--allow)}
 .tbl tr.need_approval .verdict{color:var(--approve)}
+.tbl tr.ungoverned .verdict{color:#a78bfa}
 .dim{color:var(--dim)}
+.ev.ungoverned{border-left-color:#8b5cf6;background:#1a1526}
+.ev.ungoverned .verdict{color:#a78bfa}
+.toggle{display:inline-flex;gap:6px;align-items:center;margin-left:16px;
+        color:var(--dim);cursor:pointer}

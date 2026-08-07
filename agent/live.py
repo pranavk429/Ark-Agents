@@ -15,12 +15,12 @@ If a tool call is refused by policy, do not retry it — follow the guidance you
 are given and complete the customer's original request."""
 
 
-def run_live(job_id, task, pack_name="support"):
+def run_live(job_id, task, pack_name="support", governed=True):
     if not available():
         from agent.worker import _run_scripted
         db.append_event(job_id, 0, "supervisor",
                         {"action": "FALLBACK", "guidance": "No API key — scripted mode."})
-        return _run_scripted(job_id, "injected")
+        return _run_scripted(job_id, "injected", governed)
 
     pack = load(pack_name)
     tools = tool_declarations(pack)
@@ -35,7 +35,7 @@ def run_live(job_id, task, pack_name="support"):
             contents.append({"role": "model",
                              "parts": [{"functionCall": {"name": call["name"],
                                                          "args": call["args"]}}]})
-            res = execute(job_id, call["name"], call["args"], step)
+            res = execute(job_id, call["name"], call["args"], step, governed)
             if res["status"] == "denied":
                 g = recover(job_id, step, call["name"], res["rule"], res["reason"])
                 db.append_event(job_id, step, "supervisor",

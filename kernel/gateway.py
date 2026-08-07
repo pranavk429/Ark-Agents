@@ -71,12 +71,29 @@ def _provenance(job_id, pack, tool, decision, context_trust):
     return lines
 
 
-def execute(job_id: str, tool: str, args: dict, step: int) -> dict:
+def execute(job_id: str, tool: str, args: dict, step: int,
+            governed: bool = True) -> dict:
     started = time.time()
     job = db.get_job(job_id)
     pack_name = job["pack"] if job else "support"
     context_trust = job["context_trust"] if job else "trusted"
     pack = load(pack_name)
+
+    # Ungoverned demo mode: record what WOULD have happened, then run it anyway.
+    # This is the comparison, not a security hole — it exists only so a judge can
+    # watch the same attack succeed without the kernel.
+    if not governed:
+        db.append_event(job_id, step, "decision",
+                        {"tool": tool, "args_preview": str(args)[:300],
+                         "rule_id": "TOWER_OFF", "reasons": ["kernel_disabled"],
+                         "labels_in": [], "contributing": [], "matched_rules": [],
+                         "duration_ms": 0.0},
+                        tool=tool, decision="ungoverned")
+        try:
+            result = REGISTRY[tool](args)
+        except Exception as exc:      # an unknown tool must not 500 the demo
+            result = f"tool_error:{type(exc).__name__}"
+        return {"status": "allowed", "result": result}
 
     try:
         contributing = STORE.contributing(job_id, args)
